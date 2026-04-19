@@ -1,0 +1,617 @@
+<\!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Gap Analyzer - Upload & Adjust</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        .upload-section {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .upload-section h2 { margin-bottom: 20px; color: #333; }
+        
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 8px;
+            padding: 40px;
+            background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .upload-zone:hover {
+            background: #f0f0f0;
+            border-color: #764ba2;
+        }
+        
+        .upload-zone.dragover {
+            background: #e8ebf7;
+            border-color: #667eea;
+        }
+        
+        .upload-zone p { color: #666; margin: 10px 0; }
+        .upload-zone .icon { font-size: 40px; margin-bottom: 10px; }
+        
+        input[type="file"] { display: none; }
+        
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .upload-btn:hover { background: #764ba2; }
+        
+        .loading { display: none; text-align: center; }
+        .loading.show { display: block; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .dashboard { display: none; }
+        .dashboard.show { display: block; }
+        
+        .user-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .user-info h2 { color: #667eea; margin-bottom: 10px; }
+        .user-info p { margin: 5px 0; color: #666; }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .slider-container {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            font-weight: bold;
+            color: #667eea;
+            min-width: 120px;
+            text-align: right;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        
+        .metric h4 { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 8px; }
+        .metric .big { font-size: 24px; font-weight: bold; color: #333; }
+        .metric .small { font-size: 11px; color: #666; margin-top: 5px; }
+        
+        .metric.critical .big { color: #e74c3c; }
+        .metric.warning .big { color: #f39c12; }
+        .metric.good .big { color: #27ae60; }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            position: relative;
+            height: 350px;
+        }
+        
+        .scenario {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .scenario.critical { border-left-color: #e74c3c; }
+        .scenario.warning { border-left-color: #f39c12; }
+        .scenario.good { border-left-color: #27ae60; }
+        
+        .scenario h3 { margin-bottom: 15px; font-size: 16px; }
+        
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .scenario-item { background: #f9f9f9; padding: 12px; border-radius: 4px; }
+        .scenario-item .label { font-size: 11px; color: #999; text-transform: uppercase; }
+        .scenario-item .value { font-size: 18px; font-weight: bold; color: #333; margin-top: 5px; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .status-badge.critical { background: #ffe6e6; color: #c0392b; }
+        .status-badge.warning { background: #fff3e0; color: #d68910; }
+        .status-badge.good { background: #e8f5e9; color: #27ae60; }
+        
+        .error {
+            background: #ffe6e6;
+            color: #c0392b;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .footer { text-align: center; color: #999; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Insurance Gap Analyzer</h1>
+        <p>Upload Your Insurance Data & Adjust Parameters to See Real-Time Gap Analysis</p>
+    </div>
+    
+    <div class="container">
+        <\!-- UPLOAD SECTION -->
+        <div class="upload-section">
+            <h2>Step 1: Upload Your Insurance Excel File</h2>
+            <div class="upload-zone" id="uploadZone">
+                <div class="icon">📄</div>
+                <p><strong>Drag & drop</strong> your Insurance_Intake_Simplified.xlsx here</p>
+                <p>or click to select a file</p>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing your file...</p>
+            </div>
+            
+            <div class="error" id="error" style="display: none;"></div>
+        </div>
+        
+        <\!-- DASHBOARD SECTION -->
+        <div class="dashboard" id="dashboard">
+            <\!-- User Info -->
+            <div class="user-info">
+                <h2 id="userName">User Name</h2>
+                <p>Age: <strong id="userAge">--</strong> | Income: <strong id="userIncome">SGD 0</strong> | Dependents: <strong id="userDependents">--</strong></p>
+                <p>Current Annual Premium: <strong id="userPremium">SGD 0</strong></p>
+            </div>
+            
+            <\!-- Controls -->
+            <div class="controls">
+                <h3 style="margin-bottom: 20px;">Step 2: Adjust Parameters</h3>
+                
+                <div class="control-group">
+                    <label>Annual Income (SGD)</label>
+                    <div class="slider-container">
+                        <input type="range" id="incomeSlider" min="60000" max="300000" step="10000">
+                        <div class="value-display" id="incomeValue">SGD 120,000</div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Monthly Expenses (SGD)</label>
+                    <div class="slider-container">
+                        <input type="range" id="expenseSlider" min="1000" max="10000" step="100">
+                        <div class="value-display" id="expenseValue">SGD 2,500</div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Mortgage Balance (SGD)</label>
+                    <div class="slider-container">
+                        <input type="range" id="mortgageSlider" min="0" max="1000000" step="50000">
+                        <div class="value-display" id="mortgageValue">SGD 200,000</div>
+                    </div>
+                </div>
+            </div>
+            
+            <\!-- Coverage Metrics -->
+            <h3 style="margin: 20px 0;">Current Coverage vs Recommended Need</h3>
+            <div class="grid">
+                <div class="metric critical" id="deathMetric">
+                    <h4>Death Benefit</h4>
+                    <div class="big">SGD 670K</div>
+                    <div class="small">Current coverage</div>
+                    <div class="small" style="color: #e74c3c; margin-top: 8px;"><strong>Gap: SGD 1.83M</strong></div>
+                </div>
+                
+                <div class="metric critical" id="diMetric">
+                    <h4>Disability Income</h4>
+                    <div class="big">SGD 1,800</div>
+                    <div class="small">Monthly coverage</div>
+                    <div class="small" style="color: #e74c3c; margin-top: 8px;"><strong>Gap: SGD 5.2K/mo</strong></div>
+                </div>
+                
+                <div class="metric critical" id="ciMetric">
+                    <h4>Critical Illness</h4>
+                    <div class="big">SGD 700K</div>
+                    <div class="small">Current coverage</div>
+                    <div class="small" style="color: #e74c3c; margin-top: 8px;"><strong>Gap: SGD 0</strong></div>
+                </div>
+            </div>
+            
+            <\!-- Charts -->
+            <div class="chart-container">
+                <canvas id="gapChart"></canvas>
+            </div>
+            
+            <\!-- Scenario Analysis -->
+            <h3 style="margin: 30px 0 20px;">Scenario Analysis</h3>
+            
+            <div class="scenario critical">
+                <h3>📊 Scenario 1: If You Pass Away</h3>
+                <div class="scenario-grid">
+                    <div class="scenario-item">
+                        <div class="label">Death Benefit</div>
+                        <div class="value" id="deathCov">SGD 670K</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Family Needs</div>
+                        <div class="value" id="deathNeed">SGD 2.4M</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Family Survives</div>
+                        <div class="value" id="familyMonths" style="color: #e74c3c;">3 months</div>
+                    </div>
+                </div>
+                <div class="status-badge critical" id="deathStatus">CRITICAL</div>
+            </div>
+            
+            <div class="scenario critical">
+                <h3>🏥 Scenario 2: If You Have Critical Illness</h3>
+                <div class="scenario-grid">
+                    <div class="scenario-item">
+                        <div class="label">Your CI Coverage</div>
+                        <div class="value" id="ciCov">SGD 700K</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Medical Need</div>
+                        <div class="value" id="ciNeed">SGD 300K</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Gap</div>
+                        <div class="value" id="ciGap" style="color: #27ae60;">Covered</div>
+                    </div>
+                </div>
+                <div class="status-badge good" id="ciStatus">COVERED</div>
+            </div>
+            
+            <div class="scenario warning">
+                <h3>👴 Scenario 3: Long-Term Care (Age 75+)</h3>
+                <div class="scenario-grid">
+                    <div class="scenario-item">
+                        <div class="label">Monthly Need</div>
+                        <div class="value" id="ltcNeed">SGD 4,000</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Your Coverage</div>
+                        <div class="value" id="ltcCov">SGD 1,800</div>
+                    </div>
+                    <div class="scenario-item">
+                        <div class="label">Years Away</div>
+                        <div class="value" id="yearsToLTC">27</div>
+                    </div>
+                </div>
+                <div class="status-badge warning" id="ltcStatus">AT RISK</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>This is a prototype insurance gap analyzer. Consult with a licensed insurance advisor for specific recommendations.</p>
+    </div>
+    
+    <script>
+        let currentData = null;
+        let gapChart = null;
+        
+        // File upload handling
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadZone.addEventListener('click', () => fileInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            if (\!file.name.endsWith('.xlsx')) {
+                showError('Please upload an Excel (.xlsx) file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showLoading(true);
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    currentData = data;
+                    displayDashboard(data);
+                }
+                showLoading(false);
+            })
+            .catch(error => {
+                showError('Error uploading file: ' + error.message);
+                showLoading(false);
+            });
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+        
+        function showError(msg) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+            setTimeout(() => errorEl.style.display = 'none', 5000);
+        }
+        
+        function displayDashboard(data) {
+            document.getElementById('userName').textContent = data.name;
+            document.getElementById('userAge').textContent = data.age;
+            document.getElementById('userIncome').textContent = 'SGD ' + data.annual_income.toLocaleString();
+            document.getElementById('userDependents').textContent = data.dependents;
+            document.getElementById('userPremium').textContent = 'SGD ' + data.total_premium.toLocaleString('en', {maximumFractionDigits: 0});
+            
+            // Set slider initial values
+            document.getElementById('incomeSlider').value = data.annual_income;
+            document.getElementById('expenseSlider').value = data.monthly_expenses;
+            document.getElementById('mortgageSlider').value = data.mortgage;
+            
+            updateValues(data);
+            
+            document.getElementById('dashboard').classList.add('show');
+            document.getElementById('uploadZone').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function updateValues(data) {
+            // Update sliders
+            document.getElementById('incomeValue').textContent = 'SGD ' + data.annual_income.toLocaleString();
+            document.getElementById('expenseValue').textContent = 'SGD ' + data.monthly_expenses.toLocaleString();
+            document.getElementById('mortgageValue').textContent = 'SGD ' + data.mortgage.toLocaleString();
+            
+            // Update metrics
+            updateMetric('deathMetric', data.total_death, data.death_gap, 'Death');
+            updateMetric('diMetric', data.total_ltc_di, data.di_gap, 'DI Monthly');
+            updateMetric('ciMetric', data.total_early_ci + data.total_advanced_ci, data.ci_gap, 'Critical Illness');
+            
+            // Update scenarios
+            document.getElementById('deathCov').textContent = 'SGD ' + data.total_death.toLocaleString();
+            document.getElementById('deathNeed').textContent = 'SGD ' + data.death_need.toLocaleString();
+            document.getElementById('familyMonths').textContent = data.family_months + ' months';
+            document.getElementById('deathStatus').textContent = data.death_gap > 500000 ? 'CRITICAL' : data.death_gap > 0 ? 'HIGH RISK' : 'COVERED';
+            
+            document.getElementById('ciCov').textContent = 'SGD ' + (data.total_early_ci + data.total_advanced_ci).toLocaleString();
+            document.getElementById('ciNeed').textContent = 'SGD ' + data.ci_need.toLocaleString();
+            document.getElementById('ciGap').textContent = data.ci_gap > 0 ? 'SGD ' + data.ci_gap.toLocaleString() : 'Covered';
+            document.getElementById('ciStatus').textContent = data.ci_gap > 100000 ? 'CRITICAL' : data.ci_gap > 0 ? 'HIGH RISK' : 'COVERED';
+            
+            document.getElementById('ltcNeed').textContent = 'SGD ' + data.ltc_monthly_need.toLocaleString();
+            document.getElementById('ltcCov').textContent = 'SGD ' + data.total_ltc_di.toLocaleString();
+            document.getElementById('yearsToLTC').textContent = Math.max(0, 75 - data.age);
+            document.getElementById('ltcStatus').textContent = data.total_ltc_di < data.ltc_monthly_need ? 'AT RISK' : 'COVERED';
+            
+            // Update chart
+            updateChart(data);
+        }
+        
+        function updateMetric(id, current, gap, label) {
+            const el = document.getElementById(id);
+            if (gap > 100000) {
+                el.className = 'metric critical';
+            } else if (gap > 0) {
+                el.className = 'metric warning';
+            } else {
+                el.className = 'metric good';
+            }
+            const isMoney = \!label.includes('Monthly');
+            const format = isMoney ? 'SGD ' : 'SGD ';
+            el.innerHTML = `
+                <h4>${label}</h4>
+                <div class="big">${format}${current.toLocaleString('en', {maximumFractionDigits: 0})}</div>
+                <div class="small">Current</div>
+                <div class="small" style="${gap > 0 ? 'color: #e74c3c; ' : 'color: #27ae60; '}margin-top: 8px;"><strong>${gap > 0 ? 'Gap: ' : 'Covered: '}${format}${gap.toLocaleString('en', {maximumFractionDigits: 0})}</strong></div>
+            `;
+        }
+        
+        function updateChart(data) {
+            const ctx = document.getElementById('gapChart');
+            
+            if (gapChart) {
+                gapChart.destroy();
+            }
+            
+            gapChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Death', 'Disability', 'Critical Illness'],
+                    datasets: [
+                        {
+                            label: 'Current Coverage',
+                            data: [data.total_death, data.total_ltc_di * 12, data.total_early_ci + data.total_advanced_ci],
+                            backgroundColor: '#667eea'
+                        },
+                        {
+                            label: 'Recommended Need',
+                            data: [data.death_need, data.di_monthly_need * 12, data.ci_need],
+                            backgroundColor: '#e74c3c'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': SGD ' + ctx.parsed.x.toLocaleString()
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                callback: (val) => 'SGD ' + (val / 1000000).toFixed(1) + 'M'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Add slider event listeners
+        document.getElementById('incomeSlider').addEventListener('input', recalculate);
+        document.getElementById('expenseSlider').addEventListener('input', recalculate);
+        document.getElementById('mortgageSlider').addEventListener('input', recalculate);
+        
+        function recalculate() {
+            const income = parseFloat(document.getElementById('incomeSlider').value);
+            const expense = parseFloat(document.getElementById('expenseSlider').value);
+            const mortgage = parseFloat(document.getElementById('mortgageSlider').value);
+            
+            document.getElementById('incomeValue').textContent = 'SGD ' + income.toLocaleString();
+            document.getElementById('expenseValue').textContent = 'SGD ' + expense.toLocaleString();
+            document.getElementById('mortgageValue').textContent = 'SGD ' + mortgage.toLocaleString();
+            
+            fetch('/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    annual_income: income,
+                    monthly_expenses: expense,
+                    mortgage: mortgage,
+                    policies: currentData.policies
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Merge new gaps with existing data
+                const merged = { ...currentData, ...data };
+                updateValues(merged);
+            });
+        }
+    </script>
+</body>
+</html>
